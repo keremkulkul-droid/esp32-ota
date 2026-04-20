@@ -1,0 +1,61 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <Update.h>
+
+const char* ssid = "MODEM_ADI";
+const char* password = "SIFRE";
+
+const char* firmware_url =
+"https://raw.githubusercontent.com/keremkulkul-droid/esp32-ota/refs/heads/main/firmware.bin";
+
+void setup() {
+  Serial.begin(115200);
+
+  WiFi.begin(ssid, password);
+
+  Serial.print("Baglaniyor");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nBaglandi");
+  Serial.println(WiFi.localIP());
+
+  updateFirmware();
+}
+
+void loop() {
+}
+
+void updateFirmware() {
+  HTTPClient http;
+  http.begin(firmware_url);
+
+  int httpCode = http.GET();
+
+  if (httpCode == 200) {
+
+    int len = http.getSize();
+    WiFiClient * stream = http.getStreamPtr();
+
+    if (Update.begin(len)) {
+
+      size_t written = Update.writeStream(*stream);
+
+      if (written == len) {
+        Serial.println("Yukleme OK");
+      }
+
+      if (Update.end()) {
+        Serial.println("Restart");
+        ESP.restart();
+      }
+    }
+
+  } else {
+    Serial.printf("HTTP hata: %d\n", httpCode);
+  }
+
+  http.end();
+}
